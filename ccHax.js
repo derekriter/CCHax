@@ -30,8 +30,6 @@ function cchax() {
             this.onclick = _onclick;
             
             this.html = undefined;
-            
-            this.gen();
         }
         
         gen() {
@@ -49,8 +47,6 @@ function cchax() {
             this.hint = _hint;
             
             this.html = undefined;
-            
-            this.gen();
         }
         
         gen() {
@@ -68,9 +64,13 @@ function cchax() {
                     break;
             }
         }
-        value() {
+        getValue() {
             if(this.html === undefined) return "";
             return this.html.value;
+        }
+        getInt() {
+            if(this.html === undefined || this.html.value === "") return NaN;
+            return parseInt(this.html.value);
         }
     }
     class HaxDropdown {
@@ -78,8 +78,6 @@ function cchax() {
             this.options = _options;
             
             this.html = undefined;
-            
-            this.gen();
         }
         
         gen() {
@@ -87,14 +85,17 @@ function cchax() {
             this.html.className = "haxDropdown";
             
             this.options.forEach((o) => {
-                if(o.length !== 2) return;
-                
-                let val, disp;
-                [val, disp] = o;
+                if(o.length !== 2 && typeof o !== "string") return;
                 
                 let sub = document.createElement("option");
-                sub.value = val;
-                sub.innerHTML = disp;
+                if(typeof o !== "string") {
+                    sub.value = o[0];
+                    sub.innerHTML = o[1];
+                }
+                else {
+                    sub.value = o;
+                    sub.innerHTML = o;
+                }
                 
                 this.html.appendChild(sub);
             });
@@ -109,8 +110,6 @@ function cchax() {
             this.val = _initVal;
             
             this.html = undefined;
-            
-            this.gen();
         }
         
         gen() {
@@ -136,16 +135,7 @@ function cchax() {
     /*FUNCS*/
     function genPanel(blocks) {
         let p = document.createElement("div");
-        p.style.backgroundColor = "black";
-        p.style.width = "300px";
-        p.style.height = "30vh";
-        p.style.padding = "20px";
-        p.style.display = "flex";
-        p.style.flexDirection = "column";
-        p.style.position = "absolute";
-        p.style.left = "0";
-        p.style.bottom = "0";
-        p.style.zIndex = "1000000002";
+        p.id = "haxPanel";
         
         blocks.forEach((b) => {
             b.gen();
@@ -157,22 +147,42 @@ function cchax() {
     function genStyle() {
         let s = document.createElement("style");
         s.innerHTML = `
+#haxPanel {
+    background: black;
+    width: 300px;
+    height: 30vh;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    z-index: 1000000002;
+    overflow-y: scroll;
+}
+
 .haxBlock {
     border-bottom: 1px solid #222;
     margin: 0 0 10px 0;
-    padding-bottom: 10px;
+    padding: 0;
     display: flex;
     flex-flow: row wrap;
     align-items: center;
     column-gap: 5px;
     row-gap: 5px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.haxBlock::after {
+    content: "";
+    height: 7px;
+    width: 100%;
 }
 
 .haxButton {
     background: #008CBA55;
     color: white;
-    margin-bottom: 0;
-    margin-top: 0;
+    margin: 0;
     border: none;
     text-align: center;
     padding: 5px;
@@ -199,13 +209,11 @@ function cchax() {
     width: 100px;
     height: 16px;
     color: white;
-    margin-bottom: 0;
-    margin-top: 0;
+    margin: 0;
     padding: 5px;
     font-family: sans-serif;
     border: none !important;
     outline: none;
-    margin-left: 3px;
     border-radius: 0 !important;
     box-shadow: none !important;
 }
@@ -226,7 +234,8 @@ function cchax() {
     background: #000000;
     outline: none;
     cursor: pointer;
-    display: grid;
+    max-width: 100%;
+    margin: 0;
 }
 .haxDropdown:focus {
     border-left: 1px solid #008CBA;
@@ -239,8 +248,7 @@ function cchax() {
 }
 
 .haxBoolDisplay {
-    margin-bottom: 0;
-    margin-top: 0;
+    margin: 0;
     display: inline-block;
     font-family: monospace;
     padding: 5px 5px 5px 0;
@@ -258,38 +266,12 @@ function cchax() {
     
     /*VARS*/
     let ultraclkEnabled = false;
+    let autoclkEnabled = false;
+    let autoclkID = undefined;
+    let goldFarmEnabled = false;
+    let goldFarmID = undefined;
     
     /*ELEMENTS*/
-    const addCookiesBtn = new HaxButton("Add Cookies", "Adds x cookies", () => {
-        const amt = parseInt(addCookiesAmt.value());
-        if(amt === NaN || addCookiesAmt.value() === "") return;
-        
-        Game.cookies += amt;
-        Game.cookiesEarned += amt;
-    });
-    const addCookiesAmt = new HaxTextInput("number", "#");
-    const addCookies = new HaxBlock([addCookiesBtn, addCookiesAmt]);
-    
-    const addLumpsBtn = new HaxButton("Add Sugar Lumps", "Adds x sugar lumps", () => {
-        const amt = parseInt(addLumpsAmt.value());
-        if(amt === NaN || addLumpsAmt.value() === "") return;
-        
-        Game.lumps += amt;
-        Game.lumpsTotal += amt;
-    });
-    const addLumpsAmt = new HaxTextInput("number", "#");
-    const addLumps = new HaxBlock([addLumpsBtn, addLumpsAmt]);
-    
-    const addUnitsBtn = new HaxButton("Add Units", "Adds x of y units", () => {
-        const amt = parseInt(addUnitsAmt.value());
-        if(amt === NaN || addUnitsAmt.value() === "") return;
-        
-        Game.Objects[addUnitsDrp.getValue()].getFree(amt);
-    });
-    const addUnitsDrp = new HaxDropdown(UNITS_LIST);
-    const addUnitsAmt = new HaxTextInput("number", "#");
-    const addUnits = new HaxBlock([addUnitsBtn, addUnitsDrp, addUnitsAmt]);
-    
     const ultraclkBtn = new HaxButton("Ultraclick", `Makes clicks worth ${ULTRACLK_AMT.toExponential()} cookies`, () => {
         ultraclkEnabled = !ultraclkEnabled;
         ultraclkDisp.setValue(ultraclkEnabled);
@@ -298,57 +280,92 @@ function cchax() {
         else Game.removeHook("click", ultraclick);
     });
     const ultraclkDisp = new HaxBoolDisplay(ultraclkEnabled);
-    const ultraclk = new HaxBlock([ultraclkBtn, ultraclkDisp]);
-    
-    /*const unlockField = createField("text", "Achievement Name");
-    const unlockAction = createAction("Unlock Achievement", "Instantly unlocks the achievement named x", () => {
-        Game.Win(unlockField.value);
-    });
-    
-    const addChipsField = createField("number", "A Number");
-    const addChipsAction = createAction("Add Heavenly Chips", "Instantly gives you x amount of heavenly chips", () => {
-        Game.heavenlyChips += parseInt(addChipsField.value);
-    });
-    
-    const toggleAutoDisplay = createDisplay();
-    let toggleAuto = false;
-    let autoclickerID = -1;
-    const toggleAutoAction = createAction("Autoclicker", "Enables an autoclicker on the big cookie (doesn't require that your mouse is on the big cookie)", () => {
-        toggleAuto = !toggleAuto;
-        updateDisplay(toggleAutoDisplay, toggleAuto);
-        if(toggleAuto) {
-            autoclickerID = setInterval(() => {
+    const autoclkBtn = new HaxButton("Autoclick", "Autoclicks the cookie", () => {
+        autoclkEnabled = !autoclkEnabled;
+        autoclkDisp.setValue(autoclkEnabled);
+        
+        if(autoclkEnabled) {
+            autoclkID = setInterval(() => {
+                Game.lastClick = 0;
                 document.getElementById("bigCookie").click();
             }, 1);
-        } else {
-            clearInterval(autoclickerID);
         }
+        else clearInterval(autoclkID);
     });
+    const autoclkDisp = new HaxBoolDisplay(autoclkEnabled);
+    const clickUpgrades = new HaxBlock([ultraclkBtn, ultraclkDisp, autoclkBtn, autoclkDisp]);
     
-    const spawnGoldenAction = createAction("Spawn Golden Cookie", "Spawns a golden cookie", () => {
+    const addCookiesBtn = new HaxButton("Add Cookies", "Adds x cookies", () => {
+        const amt = addCookiesAmt.getInt();
+        if(isNaN(amt)) return;
+        console.log(amt);
+        Game.cookies += amt;
+        Game.cookiesEarned += amt;
+    });
+    const addCookiesAmt = new HaxTextInput("number", "#");
+    const addCookies = new HaxBlock([addCookiesBtn, addCookiesAmt]);
+    
+    const addLumpsBtn = new HaxButton("Add Sugar Lumps", "Adds x sugar lumps", () => {
+        const amt = addLumpsAmt.getInt();
+        if(isNaN(amt)) return;
+        
+        Game.lumps += amt;
+        Game.lumpsTotal += amt;
+    });
+    const addLumpsAmt = new HaxTextInput("number", "#");
+    const addLumps = new HaxBlock([addLumpsBtn, addLumpsAmt]);
+    
+    const addUnitsBtn = new HaxButton("Add Units", "Adds x of y units", () => {
+        const amt = addUnitsAmt.getInt();
+        if(isNaN(amt)) return;
+        
+        Game.Objects[addUnitsDrp.getValue()].getFree(amt);
+    });
+    const addUnitsDrp = new HaxDropdown(UNITS_LIST);
+    const addUnitsAmt = new HaxTextInput("number", "#");
+    const addUnits = new HaxBlock([addUnitsBtn, addUnitsDrp, addUnitsAmt]);
+    
+    const addChipsBtn = new HaxButton("Add Heavenly Chips", "Adds x heavenly chips", () => {
+        let val = addChipsAmt.getInt();
+        if(isNaN(val)) return;
+        
+        Game.heavenlyChips += val;
+    });
+    const addChipsAmt = new HaxTextInput("number", "#");
+    const addChips = new HaxBlock([addChipsBtn, addChipsAmt]);
+    
+    const unlockAchvmtBtn = new HaxButton("Unlock Achievement", "Unlocks x achievement", () => {
+        Game.Win(unlockAchvmtDrp.getValue());
+    });
+    const unlockAchvmtDrp = new HaxDropdown(Object.keys(Game.Achievements));
+    const unlockAllAchvmtBtn = new HaxButton("Unlock All Achievements", "Unlocks all non-shadow and non-dungeon achievements", () => {
+        Object.keys(Game.Achievements).forEach((a) => {
+            let achvmt = Game.Achievements[a];
+            if(achvmt.pool !== "shadow" && achvmt.pool !== "dungeon") Game.Win(a);
+        });
+    });
+    const unlockAchvmt = new HaxBlock([unlockAchvmtBtn, unlockAchvmtDrp, unlockAllAchvmtBtn]);
+    
+    const spawnGoldenBtn = new HaxButton("Spawn Golden Cookie", "Spawns a golden cookie", () => {
         new Game.shimmer("golden").wrath = 0;
     });
-    
-    const toggleGoldenDisplay = createDisplay();
-    let toggleGolden = false;
-    let goldenID = -1;
-    const toggleGoldenAction = createAction("Gold Farm", "Automatically clicks on golden cookies", () => {
-        toggleGolden = !toggleGolden;
-        updateDisplay(toggleGoldenDisplay, toggleGolden);
-        if(toggleGolden) {
-            goldenID = setInterval(() => {
-                Game.shimmers.forEach((shimmer) => {
-                    if(shimmer.wrath == 0) {
-                        shimmer.pop();
-                    }
+    const goldFarmBtn = new HaxButton("Gold Farm", "Automatically clicks on golden cookies", () => {
+        goldFarmEnabled = !goldFarmEnabled;
+        goldFarmDisp.setValue(goldFarmEnabled);
+        
+        if(goldFarmEnabled) {
+            goldFarmID = setInterval(() => {
+                Game.shimmers.forEach((s) => {
+                    if(s.wrath === 0) s.pop();
                 });
             }, 100);
-        } else {
-            clearInterval(goldenID);
         }
+        else clearInterval(goldFarmID);
     });
+    const goldFarmDisp = new HaxBoolDisplay(goldFarmEnabled);
+    const golden = new HaxBlock([spawnGoldenBtn, goldFarmBtn, goldFarmDisp]);
     
-    const toggleUpgradeDisplay = createDisplay();
+    /*const toggleUpgradeDisplay = createDisplay();
     let toggleUpgrade = false;
     let upgradeID = -1;
     const toggleUpgradeAction = createAction("Auto Upgrade", "Automatically buys available upgrades", () => {
@@ -435,21 +452,13 @@ function cchax() {
         } else {
             clearInterval(farmWrinklersID);
         }
-    });
-    
-    const unlockAllAchievementsAction = createAction("Unlock All Achievements", "Unlocks all achievements (doesn't unlock shadow achievements)", () => {
-        Game.AchievementsById.forEach((achievement) => {
-            if(achievement.pool != "shadow") {
-                Game.Win(achievement.name);
-            }
-        });
     });*/
     
     
     const style = genStyle();
     document.head.appendChild(style);
     
-    const panel = genPanel([addCookies, addLumps, addUnits, ultraclk]);
+    const panel = genPanel([clickUpgrades, addCookies, addLumps, addUnits, addChips, unlockAchvmt, golden]);
     document.body.appendChild(panel);
     
     Game.Notify("Loaded Hax", "", 0, 3);
