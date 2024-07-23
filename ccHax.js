@@ -62,11 +62,15 @@ function cchax() {
             if(this.tooltip !== undefined) this.html.title = this.tooltip;
             
             switch(this.type) {
-                case "number":
+                case "integer":
                     this.html.addEventListener("input", () => {
                         this.html.value = this.html.value.replace(/\D/g, "");
                     });
                     break;
+                case "float":
+                    this.html.addEventListener("input", () => {
+                        this.html.value = this.html.value.replace(/[^.\d]/g, "");
+                    });
             }
         }
         getValue() {
@@ -77,10 +81,15 @@ function cchax() {
             if(this.html === undefined || this.html.value === "") return NaN;
             return parseInt(this.html.value);
         }
+        getFloat() {
+            if(this.html === undefined || this.html.value === "") return NaN;
+            return parseFloat(this.html.value);
+        }
     }
     class HaxDropdown {
-        constructor(_options) {
+        constructor(_options, _tooltip) {
             this.options = _options;
+            this.tooltip = _tooltip;
             
             this.html = undefined;
         }
@@ -88,6 +97,7 @@ function cchax() {
         gen() {
             this.html = document.createElement("select");
             this.html.className = "haxDropdown";
+            if(this.tooltip !== undefined) this.html.title = this.tooltip;
             
             this.options.forEach((o) => {
                 if(o.length !== 2 && typeof o !== "string") return;
@@ -334,11 +344,11 @@ function cchax() {
         const addCookiesBtn = new HaxButton("Add Cookies", "Adds x cookies", () => {
             const amt = addCookiesAmt.getInt();
             if(isNaN(amt)) return;
-            console.log(amt);
+            
             Game.cookies += amt;
             Game.cookiesEarned += amt;
         });
-        const addCookiesAmt = new HaxTextInput("number", "#");
+        const addCookiesAmt = new HaxTextInput("integer", "#");
         const addLumpsBtn = new HaxButton("Add Sugar Lumps", "Adds x sugar lumps", () => {
             const amt = addLumpsAmt.getInt();
             if(isNaN(amt)) return;
@@ -346,14 +356,14 @@ function cchax() {
             Game.lumps += amt;
             Game.lumpsTotal += amt;
         });
-        const addLumpsAmt = new HaxTextInput("number", "#");
+        const addLumpsAmt = new HaxTextInput("integer", "#");
         const addChipsBtn = new HaxButton("Add Heavenly Chips", "Adds x heavenly chips", () => {
             let val = addChipsAmt.getInt();
             if(isNaN(val)) return;
             
             Game.heavenlyChips += val;
         });
-        const addChipsAmt = new HaxTextInput("number", "#");
+        const addChipsAmt = new HaxTextInput("integer", "#");
         
         resources = new HaxBlock([addCookiesBtn, addCookiesAmt, addLumpsBtn, addLumpsAmt, addChipsBtn, addChipsAmt]);
     }
@@ -367,7 +377,7 @@ function cchax() {
             Game.Objects[addBuildingsDrp.getValue()].getFree(amt);
         });
         const addBuildingsDrp = new HaxDropdown(Object.keys(Game.Objects));
-        const addBuildingsAmt = new HaxTextInput("number", "#");
+        const addBuildingsAmt = new HaxTextInput("integer", "#");
         
         buildings = new HaxBlock([addBuildingsBtn, addBuildingsDrp, addBuildingsAmt]);
     }
@@ -522,32 +532,27 @@ function cchax() {
     
     let buffs;
     {
-        const addBuffBtn = new HaxButton("Add Buff", "Adds x buff for y seconds, with extra data z and w", () => {
+        const addBuffBtn = new HaxButton("Add Buff", "Adds x buff for y seconds with power z and optional building w\n\nfrenzy, blood frenzy, clot, dragon harvest, sugar frenzy, loan 1, loan 1 interest, loan 2, loan 2 interest, loan 3, loan 3 interest - multiplies CpS by {power}\neverything must go - makes all buildings 5% cheaper, {power} has no effect\npixie luck - makes all buildings 2% cheaper, {power} has no effect\ncursed finger - stops all building production and makes each click worth {power}\nclick frenzy, dragonflight - mutliplies click power by {power}\ncookie storm - spawns a bunch of golden cookies, {power} has no effect\nbuilding buff - multiplies CpS by {power} * number of {building}%\nbuilding debuff - multiplies CpS by 1 / ({power} * number of {building})%\nsugar blessing - makes golden cookies 10% more likely to spawn\nhaggler luck - makes upgrades {power}% cheaper\nhaggler misery - makes upgrades {power}% more expensive\npixie misery - makes all buildings {power}% more expensive\nmagic adept - spells backfire {power} times less\nmagic inept - spells backfire {power} times more\ndevastation - adds {power}% to clicking power\ngifted out - can't send or receive gifts, {power} has no effect", () => {
+            let type = addBuffType.getValue();
+            let time = addBuffTime.getFloat();
+            let dat1 = addBuffDat1.getFloat();
+            let dat2 = Game.Objects[addBuffDat2.getValue()].id;
             
+            if(type !== "cookie storm" && type !== "gifted out" && type !== "everything must go" && type !== "pixie luck" && isNaN(dat1)) return;
+            if(isNaN(time) || dat2 === undefined) return;
+            
+            Game.gainBuff(type, time, dat1, dat2);
         });
         const addBuffType = new HaxDropdown(Object.keys(Game.buffTypesByName));
-        const addBuffTime = new HaxTextInput("number", "Duration (sec)");
-        const addBuffDat1 = new HaxTextInput("text", "Hover for help", "dat1");
-        const addBuffDat2 = new HaxTextInput("text", "Hover for help", "dat2");
+        const addBuffTime = new HaxTextInput("float", "Duration (sec)");
+        const addBuffDat1 = new HaxTextInput("float", "Power");
+        const addBuffDat2 = new HaxDropdown(Object.keys(Game.Objects), "Building (only used for some buffs)");
         const clearBuffsBtn = new HaxButton("Clear Buffs", "Removes all active buffs", () => {
             Game.killBuffs();
         });
         
         buffs = new HaxBlock([addBuffBtn, addBuffType, addBuffTime, addBuffDat1, addBuffDat2, clearBuffsBtn]);
     }
-    
-    /*const changeTextureFromField = createField("text", "Texture");
-    const changeTextureToField = createField("text", "URL");
-    const changeTextureAction = createAction("Retexture", "Changes the texture of the provided texture to the image from the provided URL", () => {
-        Game.Loader.Replace(changeTextureFromField.value, changeTextureToField.value);
-    });
-    
-    const buffName = createField("text", "Buff Name");
-    const buffTime = createField("text", "Buff Time");
-    const buffArg1 = createField("text", "Buff Arg1");
-    const buffAction = createAction("Add Buff", "Adds a buff", () => {
-        Game.gainBuff(buffName.value, parseInt(buffTime.value), parseInt(buffArg1.value));
-    });
     
     /*INJECTION*/
     const style = genStyle();
