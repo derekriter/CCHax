@@ -1,4 +1,5 @@
 function cchax() {
+    /*CLASSES*/
     class HaxBlock {
         constructor(_children) {
             this.children = _children;
@@ -42,9 +43,10 @@ function cchax() {
         }
     }
     class HaxTextInput{
-        constructor(_type, _hint) {
+        constructor(_type, _hint, _tooltip) {
             this.type = _type;
             this.hint = _hint;
+            this.tooltip = _tooltip;
             
             this.html = undefined;
         }
@@ -55,6 +57,7 @@ function cchax() {
             
             this.html.type = "text";
             this.html.placeholder = this.hint;
+            if(this.tooltip !== undefined) this.html.title = this.tooltip;
             
             switch(this.type) {
                 case "number":
@@ -128,10 +131,6 @@ function cchax() {
         }
     }
     
-    /*CONSTS*/
-    const ULTRACLK_AMT = 1e30;
-    const UNITS_LIST = [["Cursor", "Cursor"], ["Grandma", "Grandma"], ["Farm", "Farm"], ["Mine", "Mine"], ["Factory", "Factory"], ["Bank", "Bank"], ["Temple", "Temple"], ["Wizard tower", "Wizard Tower"], ["Shipment", "Shipment"], ["Alchemy lab", "Alchemy Lab"], ["Portal", "Portal"], ["Time machine", "Time Machine"], ["Antimatter condenser", "Antimatter Condenser"], ["Prism", "Prism"], ["Chancemaker", "Chancemaker"], ["Fractal engine", "Fractal Engine"], ["Javascript console", "Javascript Console"], ["Idleverse", "Idleverse"], ["Cortex baker", "Cortex Baker"], ["You", "You"]];
-    
     /*FUNCS*/
     function genPanel(blocks) {
         let p = document.createElement("div");
@@ -173,10 +172,17 @@ function cchax() {
     overflow: hidden;
     flex-shrink: 0;
 }
+.haxBlock:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
 .haxBlock::after {
     content: "";
     height: 7px;
     width: 100%;
+}
+.haxBlock:last-child::after {
+    display: none;
 }
 
 .haxButton {
@@ -259,165 +265,236 @@ function cchax() {
         
         return s;
     }
-    function ultraclick() {
-        Game.cookies += ULTRACLK_AMT;
-        Game.cookiesEarned += ULTRACLK_AMT;
-    }
-    
-    /*VARS*/
-    let ultraclkEnabled = false;
-    let autoclkEnabled = false;
-    let autoclkID = undefined;
-    let goldFarmEnabled = false;
-    let goldFarmID = undefined;
     
     /*ELEMENTS*/
-    const ultraclkBtn = new HaxButton("Ultraclick", `Makes clicks worth ${ULTRACLK_AMT.toExponential()} cookies`, () => {
-        ultraclkEnabled = !ultraclkEnabled;
-        ultraclkDisp.setValue(ultraclkEnabled);
+    let clicks;
+    {
+        const ULTRACLK_AMT = 1e30;
         
-        if(ultraclkEnabled) Game.registerHook("click", ultraclick);
-        else Game.removeHook("click", ultraclick);
-    });
-    const ultraclkDisp = new HaxBoolDisplay(ultraclkEnabled);
-    const autoclkBtn = new HaxButton("Autoclick", "Autoclicks the cookie", () => {
-        autoclkEnabled = !autoclkEnabled;
-        autoclkDisp.setValue(autoclkEnabled);
-        
-        if(autoclkEnabled) {
-            autoclkID = setInterval(() => {
-                Game.lastClick = 0;
-                document.getElementById("bigCookie").click();
-            }, 1);
+        function ultraclick() {
+            Game.cookies += ULTRACLK_AMT;
+            Game.cookiesEarned += ULTRACLK_AMT;
         }
-        else clearInterval(autoclkID);
-    });
-    const autoclkDisp = new HaxBoolDisplay(autoclkEnabled);
-    const clickUpgrades = new HaxBlock([ultraclkBtn, ultraclkDisp, autoclkBtn, autoclkDisp]);
-    
-    const addCookiesBtn = new HaxButton("Add Cookies", "Adds x cookies", () => {
-        const amt = addCookiesAmt.getInt();
-        if(isNaN(amt)) return;
-        console.log(amt);
-        Game.cookies += amt;
-        Game.cookiesEarned += amt;
-    });
-    const addCookiesAmt = new HaxTextInput("number", "#");
-    const addCookies = new HaxBlock([addCookiesBtn, addCookiesAmt]);
-    
-    const addLumpsBtn = new HaxButton("Add Sugar Lumps", "Adds x sugar lumps", () => {
-        const amt = addLumpsAmt.getInt();
-        if(isNaN(amt)) return;
         
-        Game.lumps += amt;
-        Game.lumpsTotal += amt;
-    });
-    const addLumpsAmt = new HaxTextInput("number", "#");
-    const addLumps = new HaxBlock([addLumpsBtn, addLumpsAmt]);
-    
-    const addUnitsBtn = new HaxButton("Add Units", "Adds x of y units", () => {
-        const amt = addUnitsAmt.getInt();
-        if(isNaN(amt)) return;
+        let ultraclkEnabled = false;
+        let autoclkEnabled = false;
+        let autoclkID = undefined;
         
-        Game.Objects[addUnitsDrp.getValue()].getFree(amt);
-    });
-    const addUnitsDrp = new HaxDropdown(UNITS_LIST);
-    const addUnitsAmt = new HaxTextInput("number", "#");
-    const addUnits = new HaxBlock([addUnitsBtn, addUnitsDrp, addUnitsAmt]);
-    
-    const addChipsBtn = new HaxButton("Add Heavenly Chips", "Adds x heavenly chips", () => {
-        let val = addChipsAmt.getInt();
-        if(isNaN(val)) return;
-        
-        Game.heavenlyChips += val;
-    });
-    const addChipsAmt = new HaxTextInput("number", "#");
-    const addChips = new HaxBlock([addChipsBtn, addChipsAmt]);
-    
-    const unlockAchvmtBtn = new HaxButton("Unlock Achievement", "Unlocks x achievement", () => {
-        Game.Win(unlockAchvmtDrp.getValue());
-    });
-    const unlockAchvmtDrp = new HaxDropdown(Object.keys(Game.Achievements));
-    const unlockAllAchvmtBtn = new HaxButton("Unlock All Achievements", "Unlocks all non-shadow and non-dungeon achievements", () => {
-        Object.keys(Game.Achievements).forEach((a) => {
-            let achvmt = Game.Achievements[a];
-            if(achvmt.pool !== "shadow" && achvmt.pool !== "dungeon") Game.Win(a);
+        const ultraclkBtn = new HaxButton("Ultraclick", `Makes clicks worth ${ULTRACLK_AMT.toExponential()} cookies`, () => {
+            ultraclkEnabled = !ultraclkEnabled;
+            ultraclkDisp.setValue(ultraclkEnabled);
+            
+            if(ultraclkEnabled) Game.registerHook("click", ultraclick);
+            else Game.removeHook("click", ultraclick);
         });
-    });
-    const unlockAchvmt = new HaxBlock([unlockAchvmtBtn, unlockAchvmtDrp, unlockAllAchvmtBtn]);
-    
-    const spawnGoldenBtn = new HaxButton("Spawn Golden Cookie", "Spawns a golden cookie", () => {
-        new Game.shimmer("golden").wrath = 0;
-    });
-    const goldFarmBtn = new HaxButton("Gold Farm", "Automatically clicks on golden cookies", () => {
-        goldFarmEnabled = !goldFarmEnabled;
-        goldFarmDisp.setValue(goldFarmEnabled);
+        const ultraclkDisp = new HaxBoolDisplay(ultraclkEnabled);
+        const autoclkBtn = new HaxButton("Autoclick", "Autoclicks the cookie", () => {
+            autoclkEnabled = !autoclkEnabled;
+            autoclkDisp.setValue(autoclkEnabled);
+            
+            if(autoclkEnabled) {
+                autoclkID = setInterval(() => {
+                    Game.lastClick = 0;
+                    document.getElementById("bigCookie").click();
+                }, 1);
+            }
+            else clearInterval(autoclkID);
+        });
+        const autoclkDisp = new HaxBoolDisplay(autoclkEnabled);
         
-        if(goldFarmEnabled) {
-            goldFarmID = setInterval(() => {
-                Game.shimmers.forEach((s) => {
-                    if(s.wrath === 0) s.pop();
-                });
-            }, 100);
-        }
-        else clearInterval(goldFarmID);
-    });
-    const goldFarmDisp = new HaxBoolDisplay(goldFarmEnabled);
-    const golden = new HaxBlock([spawnGoldenBtn, goldFarmBtn, goldFarmDisp]);
+        clicks = new HaxBlock([ultraclkBtn, ultraclkDisp, autoclkBtn, autoclkDisp]);
+    }
     
-    /*const toggleUpgradeDisplay = createDisplay();
-    let toggleUpgrade = false;
-    let upgradeID = -1;
-    const toggleUpgradeAction = createAction("Auto Upgrade", "Automatically buys available upgrades", () => {
-        toggleUpgrade = !toggleUpgrade;
-        updateDisplay(toggleUpgradeDisplay, toggleUpgrade);
-        if(toggleUpgrade) {
-            upgradeID = setInterval(() => {
-                Game.UpgradesInStore.forEach((upgrade) => {
-                    if(upgrade.pool != "toggle") upgrade.buy(1);
-                });
-            }, 100);
-        } else {
-            clearInterval(upgradeID);
-        }
-    });
+    let resources;
+    {
+        const addCookiesBtn = new HaxButton("Add Cookies", "Adds x cookies", () => {
+            const amt = addCookiesAmt.getInt();
+            if(isNaN(amt)) return;
+            console.log(amt);
+            Game.cookies += amt;
+            Game.cookiesEarned += amt;
+        });
+        const addCookiesAmt = new HaxTextInput("number", "#");
+        const addLumpsBtn = new HaxButton("Add Sugar Lumps", "Adds x sugar lumps", () => {
+            const amt = addLumpsAmt.getInt();
+            if(isNaN(amt)) return;
+            
+            Game.lumps += amt;
+            Game.lumpsTotal += amt;
+        });
+        const addLumpsAmt = new HaxTextInput("number", "#");
+        const addChipsBtn = new HaxButton("Add Heavenly Chips", "Adds x heavenly chips", () => {
+            let val = addChipsAmt.getInt();
+            if(isNaN(val)) return;
+            
+            Game.heavenlyChips += val;
+        });
+        const addChipsAmt = new HaxTextInput("number", "#");
+        
+        resources = new HaxBlock([addCookiesBtn, addCookiesAmt, addLumpsBtn, addLumpsAmt, addChipsBtn, addChipsAmt]);
+    }
     
-    const changeTextureFromField = createField("text", "Texture");
+    let buildings;
+    {
+        const addBuildingsBtn = new HaxButton("Add Buildings", "Adds x of y buildings", () => {
+            const amt = addBuildingsAmt.getInt();
+            if(isNaN(amt)) return;
+            
+            Game.Objects[addBuildingsDrp.getValue()].getFree(amt);
+        });
+        const addBuildingsDrp = new HaxDropdown([["Cursor", "Cursor"], ["Grandma", "Grandma"], ["Farm", "Farm"], ["Mine", "Mine"], ["Factory", "Factory"], ["Bank", "Bank"], ["Temple", "Temple"], ["Wizard tower", "Wizard Tower"], ["Shipment", "Shipment"], ["Alchemy lab", "Alchemy Lab"], ["Portal", "Portal"], ["Time machine", "Time Machine"], ["Antimatter condenser", "Antimatter Condenser"], ["Prism", "Prism"], ["Chancemaker", "Chancemaker"], ["Fractal engine", "Fractal Engine"], ["Javascript console", "Javascript Console"], ["Idleverse", "Idleverse"], ["Cortex baker", "Cortex Baker"], ["You", "You"]]);
+        const addBuildingsAmt = new HaxTextInput("number", "#");
+        
+        buildings = new HaxBlock([addBuildingsBtn, addBuildingsDrp, addBuildingsAmt]);
+    }
+    
+    let upgrades;
+    {
+        let autoupgdEnabled = false;
+        let autoupgdID = undefined;
+        
+        const unlockupgdBtn = new HaxButton("Unlock Upgrade", "Unlocks x upgrade", () => {
+            Game.Unlock(unlockupgdDrp.getValue());
+        });
+        const unlockupgdDrp = new HaxDropdown(Object.keys(Game.Upgrades));
+        
+        const unlockAllUpgdBtn = new HaxButton("Unlock All Upgrades", "Unlocks all non-toggle and non-debug upgrades", () => {
+            Object.keys(Game.Upgrades).forEach((u) => {
+                let obj = Game.Upgrades[u];
+                if(obj.pool === "toggle" || obj.pool === "debug") return;
+                
+                Game.Unlock(u);
+            });
+        });
+        const autoupgdBtn = new HaxButton("Auto Upgrade", "Automatically buys available upgrades for free", () => {
+            autoupgdEnabled = !autoupgdEnabled;
+            autoupgdDisp.setValue(autoupgdEnabled);
+            
+            if(autoupgdEnabled) {
+                autoupgdID = setInterval(() => {
+                    Game.UpgradesInStore.forEach((u) => {
+                        if(u.pool !== "toggle" && u.pool !== "debug" && u.name !== "One mind" && u.name !== "Communal brainsweep" && u.name !== "Elder Pact") u.earn();
+                    });
+                }, 100);
+            }
+            else clearInterval(autoupgdID);
+        });
+        const autoupgdDisp = new HaxBoolDisplay(autoupgdEnabled);
+        
+        upgrades = new HaxBlock([unlockupgdBtn, unlockupgdDrp, unlockAllUpgdBtn, autoupgdBtn, autoupgdDisp]);
+    }
+    
+    let achievements;
+    {
+        const unlockAchvmtBtn = new HaxButton("Unlock Achievement", "Unlocks x achievement", () => {
+            Game.Win(unlockAchvmtDrp.getValue());
+        });
+        const unlockAchvmtDrp = new HaxDropdown(Object.keys(Game.Achievements));
+        const unlockAllAchvmtBtn = new HaxButton("Unlock All Achievements", "Unlocks all non-shadow and non-dungeon achievements", () => {
+            Object.keys(Game.Achievements).forEach((a) => {
+                let achvmt = Game.Achievements[a];
+                if(achvmt.pool !== "shadow" && achvmt.pool !== "dungeon") Game.Win(a);
+            });
+        });
+        
+        achievements = new HaxBlock([unlockAchvmtBtn, unlockAchvmtDrp, unlockAllAchvmtBtn]);
+    }
+    
+    let goldenCookies;
+    {
+        let goldFarmEnabled = false;
+        let goldFarmID = undefined;
+        
+        const spawnGoldenBtn = new HaxButton("Spawn Golden Cookie", "Spawns a golden cookie with x effect (Default is the normal game behaviour)", () => {
+            let c = new Game.shimmer("golden");
+            c.wrath = 0;
+            if(spawnGoldenDrp.getValue() !== "default") c.force = spawnGoldenDrp.getValue();
+        });
+        const spawnGoldenDrp = new HaxDropdown([["default", "Default"], ["free sugar lump", "Sugar Lump"], ["frenzy", "Frenzy"], ["dragon harvest", "Dragon Harvest"], ["everything must go", "Everything Must Go"], ["multiply cookies", "Multiply Cookies"], ["ruin cookies", "Ruin Cookies"], ["blood frenzy", "Blood Frenzy"], ["clot", "Clot"], ["cursed finger", "Cursed Finger"], ["click frenzy", "Click Frenzy"], ["dragonflight", "Dragon Flight"], ["chain cookies", "Chain Cookie"], ["cookie storm", "Cookie Storm"], ["cookie storm drop", "Cookie Storm Drop"], ["blab", "Blab (Doesn't have any effects, extremely rare in normal behaviour)"]]);
+        const goldFarmBtn = new HaxButton("Farm Golden Cookies", "Automatically clicks on golden cookies", () => {
+            goldFarmEnabled = !goldFarmEnabled;
+            goldFarmDisp.setValue(goldFarmEnabled);
+            
+            if(goldFarmEnabled) {
+                goldFarmID = setInterval(() => {
+                    Game.shimmers.forEach((s) => {
+                        if(s.wrath === 0) s.pop();
+                    });
+                }, 100);
+            }
+            else clearInterval(goldFarmID);
+        });
+        const goldFarmDisp = new HaxBoolDisplay(goldFarmEnabled);
+        
+        goldenCookies = new HaxBlock([spawnGoldenBtn, spawnGoldenDrp, goldFarmBtn, goldFarmDisp]);
+    }
+    
+    let wrinklers;
+    {
+        let farmWrinklersEnabled = false;
+        let farmWrinklersID = undefined;
+        
+        const spawnWrinklerBtn = new HaxButton("Spawn Wrinkler", "Spawns a wrinkler", () => {
+            let before = Game.elderWrath;
+            
+            Game.elderWrath = 1;
+            Game.SpawnWrinkler();
+            Game.elderWrath = before;
+        });
+        const spawnShinyWrinklerBtn = new HaxButton("Spawn Shiny Wrinkler", "Spawns a shiny wrinkler", () => {
+            let before = Game.elderWrath;
+            
+            Game.elderWrath = 1;
+            let w = Game.SpawnWrinkler();
+            Game.elderWrath = before;
+            
+            if(w) w.type = 1;
+        });
+        const farmWrinklersBtn = new HaxButton("Farm Wrinklers", "Automatically pops winklers after they have been feeding for 10 minutes", () => {
+            farmWrinklersEnabled = !farmWrinklersEnabled;
+            farmWrinklersDisp.setValue(farmWrinklersEnabled);
+            
+            if(farmWrinklersEnabled) {
+                farmWrinklersID = setInterval(() => {
+                    Game.wrinklers.forEach((w) => {
+                        if(w.phase < 2) return;
+                        
+                        if(w.timer === undefined) w.timer = 0;
+                        else if(w.timer < 600) w.timer++;
+                        else {
+                            delete w.timer;
+                            w.hp = 0;
+                        }
+                    });
+                }, 1000);
+            }
+            else clearInterval(farmWrinklersID);
+        });
+        const farmWrinklersDisp = new HaxBoolDisplay(farmWrinklersEnabled);
+        
+        wrinklers = new HaxBlock([spawnWrinklerBtn, spawnShinyWrinklerBtn, farmWrinklersBtn, farmWrinklersDisp]);
+    }
+    
+    let buffs;
+    {
+        const addBuffBtn = new HaxButton("Add Buff", "Adds x buff for y seconds, with extra data z and w", () => {
+            
+        });
+        const addBuffType = new HaxDropdown(Object.keys(Game.buffTypesByName));
+        const addBuffTime = new HaxTextInput("number", "Duration (sec)");
+        const addBuffDat1 = new HaxTextInput("text", "Hover for help", "dat1");
+        const addBuffDat2 = new HaxTextInput("text", "Hover for help", "dat2");
+        const clearBuffsBtn = new HaxButton("Clear Buffs", "Removes all active buffs", () => {
+            Game.killBuffs();
+        });
+        
+        buffs = new HaxBlock([addBuffBtn, addBuffType, addBuffTime, addBuffDat1, addBuffDat2, clearBuffsBtn]);
+    }
+    
+    /*const changeTextureFromField = createField("text", "Texture");
     const changeTextureToField = createField("text", "URL");
     const changeTextureAction = createAction("Retexture", "Changes the texture of the provided texture to the image from the provided URL", () => {
         Game.Loader.Replace(changeTextureFromField.value, changeTextureToField.value);
-    });
-    
-    let toggleUpgradeUnit = false;
-    let upgradeUnitID = -1;
-    const autoUpgradeUnitDisplay = createDisplay();
-    const autoUpgradeUnitAction = createAction("Auto Upgrade Units", "Automatically upgrades your units with sugar lumps", () => {
-        toggleUpgradeUnit = !toggleUpgradeUnit;
-        updateDisplay(autoUpgradeUnitDisplay, toggleUpgradeUnit);
-        if(toggleUpgradeUnit) {
-            upgradeUnitID = setInterval(() => {
-                Game.ObjectsById.forEach((unit) => {
-                    unit.levelUp();
-                });
-            }, 500);
-        } else {
-            clearInterval(upgradeUnitID);
-        }
-    });
-    
-    const spawnWrinklerAction = createAction("Spawn Wrinkler", "Spawns a wrinkler", () => {
-        Game.SpawnWrinkler();
-    });
-    
-    const unlockUpgradeField = createField("text", "Upgrade Name");
-    const unlockUpgradeAction = createAction("Unlock Upgrade", "Unlocks the provided upgrade", () => {
-        Game.Unlock(unlockUpgradeField.value);
-    });
-    
-    const unlockAllUpgradesAction = createAction("Unlock All Upgrades", "Unlocks all the upgrades", () => {
-        for(var i in Game.UpgradesById) {
-            Game.Unlock(Game.UpgradesById[i].name);
-        }
     });
     
     const buffName = createField("text", "Buff Name");
@@ -427,38 +504,11 @@ function cchax() {
         Game.gainBuff(buffName.value, parseInt(buffTime.value), parseInt(buffArg1.value));
     });
     
-    const clearBuffAction = createAction("Clear Buffs", "Clears all active buffs", () => {
-        Game.killBuffs();
-    });
-    
-    const farmWrinklersDisplay = createDisplay();
-    var farmWrinklers = false;
-    var farmWrinklersID = -1;
-    const farmWrinklersAction = createAction("Auto Pop Wrinklers", "Automatically pops wrinklers after 2 minutes", () => {
-        farmWrinklers = !farmWrinklers;
-        updateDisplay(farmWrinklersDisplay, farmWrinklers);
-        if(farmWrinklers) {
-            farmWrinklersID = setInterval(() => {
-                Game.wrinklers.forEach((wrinkler) => {
-                    if(wrinkler.timer == undefined && wrinkler.phase == 2 && wrinkler.hp > 0) {
-                        wrinkler.timer = 1;
-                    } else if(wrinkler.timer < 121 && wrinkler.phase == 2 && wrinkler.hp > 0) {
-                        wrinkler.timer++;
-                    } else if(wrinkler.timer == 121 && wrinkler.phase == 2 && wrinkler.hp > 0) {
-                        wrinkler.hp = -10;
-                    }
-                });
-            }, 1000);
-        } else {
-            clearInterval(farmWrinklersID);
-        }
-    });*/
-    
-    
+    /*INJECTION*/
     const style = genStyle();
     document.head.appendChild(style);
     
-    const panel = genPanel([clickUpgrades, addCookies, addLumps, addUnits, addChips, unlockAchvmt, golden]);
+    const panel = genPanel([clicks, resources, buildings, upgrades, achievements, goldenCookies, wrinklers, buffs]);
     document.body.appendChild(panel);
     
     Game.Notify("Loaded Hax", "", 0, 3);
