@@ -302,7 +302,7 @@ function cchax() {
             if(autoclkEnabled) {
                 autoclkID = setInterval(() => {
                     Game.lastClick = 0;
-                    document.getElementById("bigCookie").click();
+                    Game.ClickCookie();
                 }, 1);
             }
             else if(!init) clearInterval(autoclkID);
@@ -427,6 +427,59 @@ function cchax() {
     
     let achievements;
     {
+        const cheatAchievs = ["Cheated cookies taste awful", "True Neverclick", "Speed baking I", "Speed baking II", "Speed baking III", "Getting even with the oven", "Now this is pod-smashing", "Chirped out", "Follow the white rabbit", "God complex", "Third-party"];
+        const vanillaWin = function(what)
+        {
+            if (typeof what==='string')
+            {
+                if (Game.Achievements[what])
+                {
+                    var it=Game.Achievements[what];
+                    if (it.won==0)
+                    {
+                        var name=it.shortName?it.shortName:it.dname;
+                        it.won=1;
+                        Game.Notify(loc("Achievement unlocked"),'<div class="title" style="font-size:18px;margin-top:-2px;">'+name+'</div>',it.icon);
+                        Game.NotifyTooltip('function(){return Game.crateTooltip(Game.AchievementsById['+it.id+']);}');
+                        if (Game.CountsAsAchievementOwned(it.pool)) Game.AchievementsOwned++;
+                        Game.recalculateGains=1;
+                        if (App && it.vanilla) App.gotAchiev(it.id);
+                    }
+                }
+            }
+            else {for (var i in what) {Game.Win(what[i]);}}
+        };
+        const moddedWin = (what) => {
+            if(typeof what === "string") {
+                if(Game.Achievements[what]) {
+                    if(cheatAchievs.includes(what)) return;
+                    
+                    let a = Game.Achievements[what];
+                    if(a.won === 0) {
+                        let name = a.shortName ? a.shortName : a.dname;
+                        a.won = 1;
+                        
+                        Game.Notify(loc("Achievement unlocked"), '<div class="title" style="font-size:18px;margin-top:-2px;">' + name + '</div>', a.icon);
+                        Game.NotifyTooltip('function() {return Game.crateTooltip(Game.AchievementsById[' + a.id + ']);}');
+                        if(Game.CountsAsAchievementOwned(a.pool)) Game.AchievementsOwned++;
+                        Game.recalculateGains=1;
+                        if(App && a.vanilla) App.gotAchiev(a.id);
+                    }
+                }
+            }
+        };
+        
+        let removeCheatingEnabled = getSettingsBool("removeCheatAchievements", true);
+        
+        function removeCheatingHandler(init=false) {
+            if(removeCheatingEnabled) {
+                Game.Win = moddedWin;
+                
+                cheatAchievs.forEach((a) => {Game.RemoveAchiev(a);});
+            }
+            else if(!init) Game.Win = vanillaWin;
+        }
+        
         const unlockAchvmtBtn = new HaxButton("Unlock Achievement", "Unlocks x achievement", () => {
             Game.Win(unlockAchvmtDrp.getValue());
         });
@@ -434,11 +487,21 @@ function cchax() {
         const unlockAllAchvmtBtn = new HaxButton("Unlock All Achievements", "Unlocks all non-shadow and non-dungeon achievements", () => {
             Object.keys(Game.Achievements).forEach((a) => {
                 let achvmt = Game.Achievements[a];
-                if(achvmt.pool !== "shadow" && achvmt.pool !== "dungeon") Game.Win(a);
+                if(!cheatAchievs.includes(achvmt.name)) Game.Win(a);
             });
         });
+        const removeCheatingBtn = new HaxButton("Remove Cheat Achievements", "Removes achievements only attainable through cheating", () => {
+            removeCheatingEnabled = !removeCheatingEnabled;
+            removeCheatingDisp.setValue(removeCheatingEnabled);
+            setSettingsBool("removeCheatAchievements", removeCheatingEnabled);
+            
+            removeCheatingHandler();
+        });
+        const removeCheatingDisp = new HaxBoolDisplay(removeCheatingEnabled);
         
-        achievements = new HaxBlock([unlockAchvmtBtn, unlockAchvmtDrp, unlockAllAchvmtBtn]);
+        achievements = new HaxBlock([unlockAchvmtBtn, unlockAchvmtDrp, unlockAllAchvmtBtn, removeCheatingBtn, removeCheatingDisp]);
+        
+        removeCheatingHandler(true);
     }
     
     let goldenCookies;
@@ -554,11 +617,57 @@ function cchax() {
         buffs = new HaxBlock([addBuffBtn, addBuffType, addBuffTime, addBuffDat1, addBuffDat2, clearBuffsBtn]);
     }
     
+    let misc;
+    {
+        let partyEnabled = getSettingsBool("party", false);
+        
+        function partyHandler(init=false) {
+            if(init) {
+                Game.registerHook("draw", () => {
+                    if(Game.PARTY) {
+                        let pulse = Math.pow((Game.T % 10) / 10, 0.5);
+                        let strength = Game.PARTYstrength ? Game.PARTYstrength : 1;
+                        
+                        Game.l.style.filter = "hue-rotate(" + ((Game.T * 5) % 360) + "deg) brightness(" + (150 - 50 * pulse) + "%)";
+                        Game.l.style.webkitFilter = "hue-rotate(" + ((Game.T * 5) % 360) + "deg) brightness(" + (150 - 50 * pulse) + "%)";
+                        Game.l.style.transform = "scale(" + ((1 + 0.02 * strength) - 0.02 * strength * pulse) + "," + ((1 + 0.02 * strength) - 0.02 * strength * pulse) + ") rotate(" + (Math.sin(Game.T * 0.5) * 0.5 * strength) + "deg)";
+                        Game.wrapper.style.overflowX = "hidden";
+                        Game.wrapper.style.overflowY = "hidden";
+                    }
+                });
+            }
+            
+            Game.PARTYstrength = partyStrength.getFloat();
+            if(isNaN(Game.PARTYstrength)) Game.PARTYstrength = 1;
+            Game.PARTY = partyEnabled;
+            
+            if(!partyEnabled && !init) {
+                Game.l.style.filter = "none";
+                Game.l.style.webkitFilter = "none";
+                Game.l.style.transform = "none";
+            }
+        }
+        
+        const partyBtn = new HaxButton("PARTY", "Toggles party mode", () => {
+            partyEnabled = !partyEnabled;
+            partyDisp.setValue(partyEnabled);
+            setSettingsBool("party", partyEnabled);
+            
+            partyHandler();
+        });
+        const partyDisp = new HaxBoolDisplay(partyEnabled);
+        const partyStrength = new HaxTextInput("float", "Strength");
+        
+        misc = new HaxBlock([partyBtn, partyDisp, partyStrength]);
+        
+        partyHandler(true);
+    }
+    
     /*INJECTION*/
     const style = genStyle();
     document.head.appendChild(style);
     
-    const panel = genPanel([clicks, resources, buildings, upgrades, achievements, goldenCookies, wrinklers, buffs]);
+    const panel = genPanel([clicks, resources, buildings, upgrades, achievements, goldenCookies, wrinklers, buffs, misc]);
     document.body.appendChild(panel);
     
     Game.Notify("Loaded Hax", "", 0, 3);
