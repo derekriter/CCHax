@@ -123,26 +123,32 @@ function cchax() {
             return this.html.value;
         }
     }
-    class HaxBoolDisplay {
-        constructor(_initVal) {
-            this.val = _initVal;
+    class HaxToggle {
+        constructor(_label, _tooltip, _onclick, _state=false) {
+            this.label = _label;
+            this.tooltip = _tooltip;
+            this.onclick = _onclick;
+            this.state = Boolean(_state);
             
             this.html = undefined;
         }
         
         gen() {
-            this.html = document.createElement("p");
-            this.html.className = "haxBoolDisplay";
+            this.html = document.createElement("button");
+            this.html.className = "haxToggle";
+            this.html.style.cssText = `--color: ${this.state ? "#00BA00" : "#BA0000"};`;
             
-            this.setValue(this.val);
+            this.html.innerHTML = this.label;
+            this.html.title = this.tooltip;
+            this.html.addEventListener("click", () => {
+                this.state = !this.state;
+                this.html.style.cssText = `--color: ${this.state ? "#00BA00" : "#BA0000"};`;
+                
+                this.onclick();
+            });
         }
-        setValue(_val) {
-            this.val = _val;
-            
-            if(this.html === undefined) return;
-            this.html.innerHTML = this.val ? "Enabled" : "Disabled";
-            this.html.style.color = this.val ? "#0F0" : "#F00";
-            this.html.style.backgroundColor = this.val ? "#00FF0055" : "#FF000055";
+        getState() {
+            return Boolean(this.state);
         }
     }
     
@@ -268,13 +274,30 @@ function cchax() {
     color: black;
 }
 
-.haxBoolDisplay {
+.haxToggle {
+    --color: #FF00FF;
+    background: color-mix(in srgb, var(--color) 66%, transparent);
+    color: white;
     margin: 0;
-    display: inline-block;
-    font-family: monospace;
-    padding: 5px 5px 5px 0;
-    width: 80px;
+    border: none;
     text-align: center;
+    padding: 5px;
+    font-family: sans-serif;
+    outline: none;
+    flex: 1 100%;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.haxToggle:hover {
+    background: transparent;
+    border: 1px solid var(--color);
+    padding: 4px;
+}
+.haxToggle:active {
+    background: var(--color);
+}
+.haxToggle:focus {
+    outline: none;
 }
 `;
         
@@ -298,11 +321,11 @@ function cchax() {
         const ULTRACLK_AMT = 1e30;
         
         function ultraclkHandler(init=false) {
-            if(ultraclkEnabled) Game.registerHook("click", ultraclick);
+            if(ultraclkTgl.getState()) Game.registerHook("click", ultraclick);
             else if(!init) Game.removeHook("click", ultraclick);
         }
         function autoclkHandler(init=false) {
-            if(autoclkEnabled) {
+            if(autoclkTgl.getState()) {
                 autoclkID = setInterval(() => {
                     Game.lastClick = 0;
                     Game.ClickCookie();
@@ -315,28 +338,18 @@ function cchax() {
             Game.cookiesEarned += ULTRACLK_AMT;
         }
         
-        let ultraclkEnabled = getSettingsBool("ultraclick", false);
-        let autoclkEnabled = getSettingsBool("autoclick", false);
         let autoclkID = undefined;
         
-        const ultraclkBtn = new HaxButton("Ultraclick", `Makes clicks worth ${ULTRACLK_AMT.toExponential()} cookies`, () => {
-            ultraclkEnabled = !ultraclkEnabled;
-            ultraclkDisp.setValue(ultraclkEnabled);
-            setSettingsBool("ultraclick", ultraclkEnabled);
-            
+        const ultraclkTgl = new HaxToggle("Ultraclick", `Makes clicks worth ${ULTRACLK_AMT.toExponential()} cookies`, () => {
+            setSettingsBool("ultraclick", ultraclkTgl.getState());
             ultraclkHandler();
-        });
-        const ultraclkDisp = new HaxBoolDisplay(ultraclkEnabled);
-        const autoclkBtn = new HaxButton("Autoclick", "Autoclicks the cookie", () => {
-            autoclkEnabled = !autoclkEnabled;
-            autoclkDisp.setValue(autoclkEnabled);
-            setSettingsBool("autoclick", autoclkEnabled);
-            
+        }, getSettingsBool("ultraclick", false));
+        const autoclkTgl = new HaxToggle("Autoclick", "Autoclicks the cookie", () => {
+            setSettingsBool("autoclick", autoclkTgl.getState());
             autoclkHandler();
-        });
-        const autoclkDisp = new HaxBoolDisplay(autoclkEnabled);
+        }, getSettingsBool("autoclick", false));
         
-        clicks = new HaxBlock([ultraclkBtn, ultraclkDisp, autoclkBtn, autoclkDisp]);
+        clicks = new HaxBlock([ultraclkTgl, autoclkTgl]);
         
         ultraclkHandler(true);
         autoclkHandler(true);
@@ -387,11 +400,10 @@ function cchax() {
     
     let upgrades;
     {
-        let autoupgdEnabled = getSettingsBool("autoUpgrade", false);
         let autoupgdID = undefined;
         
         function autoupgdHandler(init=false) {
-            if(autoupgdEnabled) {
+            if(autoupgdTgl.getState()) {
                 autoupgdID = setInterval(() => {
                     Game.UpgradesInStore.forEach((u) => {
                         if(u.pool !== "toggle" && u.pool !== "debug" && u.name !== "One mind" && u.name !== "Communal brainsweep" && u.name !== "Elder Pact") u.earn();
@@ -414,16 +426,12 @@ function cchax() {
                 Game.Unlock(u);
             });
         });
-        const autoupgdBtn = new HaxButton("Auto Upgrade", "Automatically buys available upgrades for free", () => {
-            autoupgdEnabled = !autoupgdEnabled;
-            autoupgdDisp.setValue(autoupgdEnabled);
-            setSettingsBool("autoUpgrade", autoupgdEnabled);
-            
+        const autoupgdTgl = new HaxToggle("Auto Upgrade", "Automatically buys available upgrades for free", () => {
+            setSettingsBool("autoUpgrade", autoupgdTgl.getState());
             autoupgdHandler();
-        });
-        const autoupgdDisp = new HaxBoolDisplay(autoupgdEnabled);
+        }, getSettingsBool("autoUpgrade", false));
         
-        upgrades = new HaxBlock([unlockupgdBtn, unlockupgdDrp, unlockAllUpgdBtn, autoupgdBtn, autoupgdDisp]);
+        upgrades = new HaxBlock([unlockupgdBtn, unlockupgdDrp, unlockAllUpgdBtn, autoupgdTgl]);
         
         autoupgdHandler(true);
     }
@@ -472,10 +480,8 @@ function cchax() {
             }
         };
         
-        let removeCheatingEnabled = getSettingsBool("removeCheatAchievements", true);
-        
         function removeCheatingHandler(init=false) {
-            if(removeCheatingEnabled) {
+            if(removeCheatingTgl.getState()) {
                 Game.Win = moddedWin;
                 
                 cheatAchievs.forEach((a) => {Game.RemoveAchiev(a);});
@@ -493,27 +499,22 @@ function cchax() {
                 if(!cheatAchievs.includes(achvmt.name)) Game.Win(a);
             });
         });
-        const removeCheatingBtn = new HaxButton("Remove Cheat Achievements", "Removes achievements only attainable through cheating", () => {
-            removeCheatingEnabled = !removeCheatingEnabled;
-            removeCheatingDisp.setValue(removeCheatingEnabled);
-            setSettingsBool("removeCheatAchievements", removeCheatingEnabled);
-            
+        const removeCheatingTgl = new HaxToggle("Remove Cheat Achievements", "Removes achievements only attainable through cheating", () => {
+            setSettingsBool("removeCheatAchievements", removeCheatingTgl.getState());
             removeCheatingHandler();
-        });
-        const removeCheatingDisp = new HaxBoolDisplay(removeCheatingEnabled);
+        }, getSettingsBool("removeCheatAchievements", true));
         
-        achievements = new HaxBlock([unlockAchvmtBtn, unlockAchvmtDrp, unlockAllAchvmtBtn, removeCheatingBtn, removeCheatingDisp]);
+        achievements = new HaxBlock([unlockAchvmtBtn, unlockAchvmtDrp, unlockAllAchvmtBtn, removeCheatingTgl]);
         
         removeCheatingHandler(true);
     }
     
     let goldenCookies;
     {
-        let goldFarmEnabled = getSettingsBool("farmGoldenCookies", false);
         let goldFarmID = undefined;
         
         function goldFarmHandler(init=false) {
-            if(goldFarmEnabled) {
+            if(goldFarmTgl.getState()) {
                 goldFarmID = setInterval(() => {
                     Game.shimmers.forEach((s) => {
                         if(s.wrath === 0) s.pop();
@@ -529,27 +530,22 @@ function cchax() {
             if(spawnGoldenDrp.getValue() !== "default") c.force = spawnGoldenDrp.getValue();
         });
         const spawnGoldenDrp = new HaxDropdown([["default", "Default"], ["free sugar lump", "Sugar Lump"], ["frenzy", "Frenzy"], ["dragon harvest", "Dragon Harvest"], ["everything must go", "Everything Must Go"], ["multiply cookies", "Multiply Cookies"], ["ruin cookies", "Ruin Cookies"], ["blood frenzy", "Blood Frenzy"], ["clot", "Clot"], ["cursed finger", "Cursed Finger"], ["click frenzy", "Click Frenzy"], ["dragonflight", "Dragon Flight"], ["chain cookies", "Chain Cookie"], ["cookie storm", "Cookie Storm"], ["cookie storm drop", "Cookie Storm Drop"], ["blab", "Blab (Doesn't have any effects, extremely rare in normal behaviour)"]]);
-        const goldFarmBtn = new HaxButton("Farm Golden Cookies", "Automatically clicks on golden cookies", () => {
-            goldFarmEnabled = !goldFarmEnabled;
-            goldFarmDisp.setValue(goldFarmEnabled);
-            setSettingsBool("farmGoldenCookies", goldFarmEnabled);
-            
+        const goldFarmTgl = new HaxToggle("Farm Golden Cookies", "Automatically clicks on golden cookies", () => {
+            setSettingsBool("farmGoldenCookies", goldFarmTgl.getState());
             goldFarmHandler();
-        });
-        const goldFarmDisp = new HaxBoolDisplay(goldFarmEnabled);
+        }, getSettingsBool("farmGoldenCookies", false));
         
-        goldenCookies = new HaxBlock([spawnGoldenBtn, spawnGoldenDrp, goldFarmBtn, goldFarmDisp]);
+        goldenCookies = new HaxBlock([spawnGoldenBtn, spawnGoldenDrp, goldFarmTgl]);
         
         goldFarmHandler(true);
     }
     
     let wrinklers;
     {
-        let farmWrinklersEnabled = getSettingsBool("farmWrinklers", false);
         let farmWrinklersID = undefined;
         
         function farmWrinklersHandler(init=false) {
-            if(farmWrinklersEnabled) {
+            if(farmWrinklersTgl.getState()) {
                 farmWrinklersID = setInterval(() => {
                     Game.wrinklers.forEach((w) => {
                         if(w.phase < 2) return;
@@ -582,16 +578,12 @@ function cchax() {
             
             if(w) w.type = 1;
         });
-        const farmWrinklersBtn = new HaxButton("Farm Wrinklers", "Automatically pops winklers after they have been feeding for 10 minutes", () => {
-            farmWrinklersEnabled = !farmWrinklersEnabled;
-            farmWrinklersDisp.setValue(farmWrinklersEnabled);
-            setSettingsBool("farmWrinklers", farmWrinklersEnabled);
-            
+        const farmWrinklersTgl = new HaxToggle("Farm Wrinklers", "Automatically pops winklers after they have been feeding for 10 minutes", () => {
+            setSettingsBool("farmWrinklers", farmWrinklersTgl.getState());
             farmWrinklersHandler();
-        });
-        const farmWrinklersDisp = new HaxBoolDisplay(farmWrinklersEnabled);
+        }, getSettingsBool("farmWrinklers", false));
         
-        wrinklers = new HaxBlock([spawnWrinklerBtn, spawnShinyWrinklerBtn, farmWrinklersBtn, farmWrinklersDisp]);
+        wrinklers = new HaxBlock([spawnWrinklerBtn, spawnShinyWrinklerBtn, farmWrinklersTgl]);
         
         farmWrinklersHandler();
     }
@@ -622,8 +614,6 @@ function cchax() {
     
     let misc;
     {
-        let partyEnabled = getSettingsBool("party", false);
-        
         function partyHandler(init=false) {
             if(init) {
                 /*party mode override*/
@@ -648,29 +638,25 @@ function cchax() {
                 document.getElementById("topBar").style.zIndex = "1";
             }
             
-            Game.PARTY = partyEnabled;
+            Game.PARTY = partyTgl.getState();
             
-            if(!partyEnabled && !init) {
+            if(!partyTgl.getState() && !init) {
                 Game.l.style.filter = "none";
                 Game.l.style.webkitFilter = "none";
                 Game.l.style.transform = "none";
             }
         }
         
-        const partyBtn = new HaxButton("PARTY", "Toggles party mode", () => {
-            partyEnabled = !partyEnabled;
-            partyDisp.setValue(partyEnabled);
-            setSettingsBool("party", partyEnabled);
-            
+        const partyTgl = new HaxToggle("PARTY", "Toggles party mode", () => {
+            setSettingsBool("party", partyTgl.getState());
             partyHandler();
-        });
-        const partyDisp = new HaxBoolDisplay(partyEnabled);
+        }, getSettingsBool("party", false));
         const partyStrength = new HaxTextInput("float", "Strength", undefined, () => {
             Game.PARTYstrength = partyStrength.getFloat();
             if(isNaN(Game.PARTYstrength)) Game.PARTYstrength = 1;
         });
         
-        misc = new HaxBlock([partyBtn, partyDisp, partyStrength]);
+        misc = new HaxBlock([partyTgl, partyStrength]);
         
         partyHandler(true);
     }
