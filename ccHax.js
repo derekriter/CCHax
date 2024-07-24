@@ -241,7 +241,14 @@ function cchax() {
 }
 
 .haxButton {
-    background: #008CBA55;
+    --color: #008CBA;
+    background: color-mix(in srgb, var(--color) 33%, transparent);
+}
+.haxToggle {
+    --color: #FF00FF;
+    background: color-mix(in srgb, var(--color) 66%, transparent);
+}
+.haxButton, .haxToggle {
     color: white;
     margin: 0;
     border: none;
@@ -253,15 +260,15 @@ function cchax() {
     white-space: nowrap;
     cursor: pointer;
 }
-.haxButton:hover {
-    background: #008CBA00;
-    border: 1px solid #008CBA;
+.haxButton:hover, .haxToggle:hover {
+    background: transparent;
+    border: 1px solid var(--color);
     padding: 4px;
 }
-.haxButton:active {
-    background: #008CBA;
+.haxButton:active, .haxToggle:active {
+    background: var(--color);
 }
-.haxButton:focus {
+.haxButton:focus, .haxToggle:focus {
     outline: none;
 }
 
@@ -306,32 +313,6 @@ function cchax() {
 }
 .haxDropdown option {
     color: black;
-}
-
-.haxToggle {
-    --color: #FF00FF;
-    background: color-mix(in srgb, var(--color) 66%, transparent);
-    color: white;
-    margin: 0;
-    border: none;
-    text-align: center;
-    padding: 5px;
-    font-family: sans-serif;
-    outline: none;
-    flex: 1 100%;
-    white-space: nowrap;
-    cursor: pointer;
-}
-.haxToggle:hover {
-    background: transparent;
-    border: 1px solid var(--color);
-    padding: 4px;
-}
-.haxToggle:active {
-    background: var(--color);
-}
-.haxToggle:focus {
-    outline: none;
 }
 `;
         
