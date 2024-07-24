@@ -1,4 +1,5 @@
 function cchax() {
+    const VERSION = "v1.2";
     let SETTINGS = JSON.parse(window.localStorage.getItem("hax"));
     
     /*CLASSES*/
@@ -162,6 +163,11 @@ function cchax() {
             p.appendChild(b.html);
         });
         
+        let v = document.createElement("div");
+        v.id = "haxFooter";
+        v.innerHTML = `<p>CC Hax</p><a target="_blank" href="https://github.com/derekriter/cchax">${VERSION}</a>`;
+        p.appendChild(v);
+        
         return p;
     }
     function genStyle() {
@@ -171,14 +177,42 @@ function cchax() {
     background: black;
     width: 300px;
     height: 30vh;
-    padding: 20px;
+    padding: 20px 20px 10px 20px;
     display: flex;
     flex-direction: column;
     position: absolute;
     left: 0;
-    bottom: 0;
+    bottom: 20px;
     z-index: 1000000002;
     overflow-y: scroll;
+}
+#haxFooter {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 330px;
+    height: 20px;
+    background: black;
+    border-top: 1px solid #222;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    color: white;
+    font-family: sans-serif;
+    font-weight: 900;
+    padding: 0 5px 0 5px;
+}
+#haxFooter > p {
+    text-indent: 0;
+    padding: 0;
+}
+#haxFooter > a {
+    all: unset;
+    cursor: pointer;
+}
+#haxFooter > a:hover {
+    color: #008CBA;
 }
 
 .haxBlock {
@@ -193,7 +227,7 @@ function cchax() {
     overflow: hidden;
     flex-shrink: 0;
 }
-.haxBlock:last-child {
+.haxBlock:nth-last-child(1 of .haxBlock) {
     border-bottom: none;
     margin-bottom: 0;
 }
@@ -202,7 +236,7 @@ function cchax() {
     height: 7px;
     width: 100%;
 }
-.haxBlock:last-child::after {
+.haxBlock:nth-last-child(1 of .haxBlock)::after {
     display: none;
 }
 
