@@ -1,4 +1,5 @@
 function cchax() {
+    const VERSION = "v1.2";
     let SETTINGS = JSON.parse(window.localStorage.getItem("hax"));
     
     /*CLASSES*/
@@ -45,11 +46,12 @@ function cchax() {
         }
     }
     class HaxTextInput{
-        constructor(_type, _hint, _tooltip, _oninput) {
+        constructor(_type, _hint, _tooltip, _oninput, _value) {
             this.type = _type;
             this.hint = _hint;
             this.tooltip = _tooltip;
             this.oninput = _oninput;
+            this.initVal = _value;
             
             this.html = undefined;
         }
@@ -61,6 +63,7 @@ function cchax() {
             this.html.type = "text";
             this.html.placeholder = this.hint;
             if(this.tooltip !== undefined) this.html.title = this.tooltip;
+            if(this.initVal !== undefined) this.html.value = this.initVal;
             
             switch(this.type) {
                 case "integer":
@@ -162,6 +165,11 @@ function cchax() {
             p.appendChild(b.html);
         });
         
+        let v = document.createElement("div");
+        v.id = "haxFooter";
+        v.innerHTML = `<p>CC Hax</p><a target="_blank" href="https://github.com/derekriter/cchax">${VERSION}</a>`;
+        p.appendChild(v);
+        
         return p;
     }
     function genStyle() {
@@ -171,14 +179,42 @@ function cchax() {
     background: black;
     width: 300px;
     height: 30vh;
-    padding: 20px;
+    padding: 20px 20px 10px 20px;
     display: flex;
     flex-direction: column;
     position: absolute;
     left: 0;
-    bottom: 0;
+    bottom: 20px;
     z-index: 1000000002;
     overflow-y: scroll;
+}
+#haxFooter {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 330px;
+    height: 20px;
+    background: black;
+    border-top: 1px solid #222;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    color: white;
+    font-family: sans-serif;
+    font-weight: 900;
+    padding: 0 5px 0 5px;
+}
+#haxFooter > p {
+    text-indent: 0;
+    padding: 0;
+}
+#haxFooter > a {
+    all: unset;
+    cursor: pointer;
+}
+#haxFooter > a:hover {
+    color: #008CBA;
 }
 
 .haxBlock {
@@ -193,7 +229,7 @@ function cchax() {
     overflow: hidden;
     flex-shrink: 0;
 }
-.haxBlock:last-child {
+.haxBlock:nth-last-child(1 of .haxBlock) {
     border-bottom: none;
     margin-bottom: 0;
 }
@@ -202,12 +238,19 @@ function cchax() {
     height: 7px;
     width: 100%;
 }
-.haxBlock:last-child::after {
+.haxBlock:nth-last-child(1 of .haxBlock)::after {
     display: none;
 }
 
 .haxButton {
-    background: #008CBA55;
+    --color: #008CBA;
+    background: color-mix(in srgb, var(--color) 33%, transparent);
+}
+.haxToggle {
+    --color: #FF00FF;
+    background: color-mix(in srgb, var(--color) 66%, transparent);
+}
+.haxButton, .haxToggle {
     color: white;
     margin: 0;
     border: none;
@@ -219,15 +262,15 @@ function cchax() {
     white-space: nowrap;
     cursor: pointer;
 }
-.haxButton:hover {
-    background: #008CBA00;
-    border: 1px solid #008CBA;
+.haxButton:hover, .haxToggle:hover {
+    background: transparent;
+    border: 1px solid var(--color);
     padding: 4px;
 }
-.haxButton:active {
-    background: #008CBA;
+.haxButton:active, .haxToggle:active {
+    background: var(--color);
 }
-.haxButton:focus {
+.haxButton:focus, .haxToggle:focus {
     outline: none;
 }
 
@@ -273,32 +316,6 @@ function cchax() {
 .haxDropdown option {
     color: black;
 }
-
-.haxToggle {
-    --color: #FF00FF;
-    background: color-mix(in srgb, var(--color) 66%, transparent);
-    color: white;
-    margin: 0;
-    border: none;
-    text-align: center;
-    padding: 5px;
-    font-family: sans-serif;
-    outline: none;
-    flex: 1 100%;
-    white-space: nowrap;
-    cursor: pointer;
-}
-.haxToggle:hover {
-    background: transparent;
-    border: 1px solid var(--color);
-    padding: 4px;
-}
-.haxToggle:active {
-    background: var(--color);
-}
-.haxToggle:focus {
-    outline: none;
-}
 `;
         
         return s;
@@ -312,6 +329,17 @@ function cchax() {
         if(SETTINGS === null) SETTINGS = {};
         
         SETTINGS[prop] = Boolean(val);
+        window.localStorage.setItem("hax", JSON.stringify(SETTINGS));
+    }
+    function getSettingsInt(prop, fallback=0) {
+        if(SETTINGS === null || !Object.hasOwn(SETTINGS, prop)) return Math.trunc(Number(fallback));
+        
+        return Math.trunc(Number(SETTINGS[prop]));
+    }
+    function setSettingsInt(prop, val) {
+        if(SETTINGS === null) SETTINGS = {};
+        
+        SETTINGS[prop] = Math.trunc(Number(val));
         window.localStorage.setItem("hax", JSON.stringify(SETTINGS));
     }
     
@@ -511,8 +539,21 @@ function cchax() {
     
     let goldenCookies;
     {
+        const GOLDEN_TYPES = [["default", "Default"], ["free sugar lump", "Sugar Lump"], ["frenzy", "Frenzy"], ["dragon harvest", "Dragon Harvest"], ["everything must go", "Everything Must Go"], ["multiply cookies", "Multiply Cookies"], ["ruin cookies", "Ruin Cookies"], ["blood frenzy", "Blood Frenzy"], ["clot", "Clot"], ["cursed finger", "Cursed Finger"], ["click frenzy", "Click Frenzy"], ["dragonflight", "Dragon Flight"], ["chain cookies", "Chain Cookie"], ["cookie storm", "Cookie Storm"], ["cookie storm drop", "Cookie Storm Drop"], ["blab", "Blab (Doesn't have any effects, extremely rare in normal behaviour)"]];
+        
+        let autoSpawnID = undefined;
         let goldFarmID = undefined;
         
+        function autoSpawnGoldenHandler(init=false) {
+            if(autoSpawnGoldenTgl.getState()) {
+                autoSpawnID = setInterval(() => {
+                    let c = new Game.shimmer("golden");
+                    c.wrath = 0;
+                    if(autoSpawnGoldenDrp.getValue() !== "default") c.force = autoSpawnGoldenDrp.getValue();
+                }, 50);
+            }
+            else if(!init) clearInterval(autoSpawnID);
+        }
         function goldFarmHandler(init=false) {
             if(goldFarmTgl.getState()) {
                 goldFarmID = setInterval(() => {
@@ -529,14 +570,20 @@ function cchax() {
             c.wrath = 0;
             if(spawnGoldenDrp.getValue() !== "default") c.force = spawnGoldenDrp.getValue();
         });
-        const spawnGoldenDrp = new HaxDropdown([["default", "Default"], ["free sugar lump", "Sugar Lump"], ["frenzy", "Frenzy"], ["dragon harvest", "Dragon Harvest"], ["everything must go", "Everything Must Go"], ["multiply cookies", "Multiply Cookies"], ["ruin cookies", "Ruin Cookies"], ["blood frenzy", "Blood Frenzy"], ["clot", "Clot"], ["cursed finger", "Cursed Finger"], ["click frenzy", "Click Frenzy"], ["dragonflight", "Dragon Flight"], ["chain cookies", "Chain Cookie"], ["cookie storm", "Cookie Storm"], ["cookie storm drop", "Cookie Storm Drop"], ["blab", "Blab (Doesn't have any effects, extremely rare in normal behaviour)"]]);
+        const spawnGoldenDrp = new HaxDropdown(GOLDEN_TYPES);
+        const autoSpawnGoldenTgl = new HaxToggle("Auto Spawn Golden Cookies", "Rapidly spawn golden cookies with x effect (Default is the normal game behaviour)", () => {
+            setSettingsBool("autoSpawnGoldenCookies", autoSpawnGoldenTgl.getState());
+            autoSpawnGoldenHandler();
+        }, getSettingsBool("autoSpawnGoldenCookies", false));
+        const autoSpawnGoldenDrp = new HaxDropdown(GOLDEN_TYPES);
         const goldFarmTgl = new HaxToggle("Farm Golden Cookies", "Automatically clicks on golden cookies", () => {
             setSettingsBool("farmGoldenCookies", goldFarmTgl.getState());
             goldFarmHandler();
         }, getSettingsBool("farmGoldenCookies", false));
         
-        goldenCookies = new HaxBlock([spawnGoldenBtn, spawnGoldenDrp, goldFarmTgl]);
+        goldenCookies = new HaxBlock([spawnGoldenBtn, spawnGoldenDrp, autoSpawnGoldenTgl, autoSpawnGoldenDrp, goldFarmTgl]);
         
+        autoSpawnGoldenHandler(true);
         goldFarmHandler(true);
     }
     
@@ -547,17 +594,20 @@ function cchax() {
         function farmWrinklersHandler(init=false) {
             if(farmWrinklersTgl.getState()) {
                 farmWrinklersID = setInterval(() => {
+                    let cTime = new Date().getTime();
+                    let mins = !isNaN(farmWrinklersMins.getInt()) ? farmWrinklersMins.getInt() : 10;
+                    let secs = !isNaN(farmWrinklersSecs.getInt()) ? farmWrinklersSecs.getInt() : 0;
+                    
                     Game.wrinklers.forEach((w) => {
                         if(w.phase < 2) return;
                         
-                        if(w.timer === undefined) w.timer = 0;
-                        else if(w.timer < 600) w.timer++;
-                        else {
-                            delete w.timer;
+                        if(w.startTime === undefined) w.startTime = new Date().getTime();
+                        else if(cTime - w.startTime >= (mins * 60 + secs) * 1000) {
+                            delete w.startTime;
                             w.hp = 0;
                         }
                     });
-                }, 1000);
+                }, 100);
             }
             else if(!init) clearInterval(farmWrinklersID);
         }
@@ -578,12 +628,29 @@ function cchax() {
             
             if(w) w.type = 1;
         });
-        const farmWrinklersTgl = new HaxToggle("Farm Wrinklers", "Automatically pops winklers after they have been feeding for 10 minutes", () => {
+        const popWrinklersBtn = new HaxButton("Pop All Wrinklers", "Pops all wrinklers currently feeding", () => {
+            Game.wrinklers.forEach((w) => {
+                if(w.phase > 1) w.hp = 0;
+            });
+        });
+        const farmWrinklersTgl = new HaxToggle("Farm Wrinklers", "Automatically pops winklers after they have been feeding for x minutes and y seconds or a default of 10 minutes", () => {
             setSettingsBool("farmWrinklers", farmWrinklersTgl.getState());
             farmWrinklersHandler();
         }, getSettingsBool("farmWrinklers", false));
+        const farmWrinklersMins = new HaxTextInput("integer", "Minutes", undefined, () => {
+            let val = farmWrinklersMins.getInt();
+            if(isNaN(val)) val = 10;
+            
+            setSettingsInt("farmWrinklersMins", val);
+        }, String(getSettingsInt("farmWrinklersMins", 10)));
+        const farmWrinklersSecs = new HaxTextInput("integer", "Seconds", undefined, () => {
+            let val = farmWrinklersSecs.getInt();
+            if(isNaN(val)) val = 0;
+            
+            setSettingsInt("farmWrinklersSecs", val);
+        }, String(getSettingsInt("farmWrinklersSecs", 0)));
         
-        wrinklers = new HaxBlock([spawnWrinklerBtn, spawnShinyWrinklerBtn, farmWrinklersTgl]);
+        wrinklers = new HaxBlock([spawnWrinklerBtn, spawnShinyWrinklerBtn, popWrinklersBtn, farmWrinklersTgl, farmWrinklersMins, farmWrinklersSecs]);
         
         farmWrinklersHandler();
     }
