@@ -45,10 +45,11 @@ function cchax() {
         }
     }
     class HaxTextInput{
-        constructor(_type, _hint, _tooltip) {
+        constructor(_type, _hint, _tooltip, _oninput) {
             this.type = _type;
             this.hint = _hint;
             this.tooltip = _tooltip;
+            this.oninput = _oninput;
             
             this.html = undefined;
         }
@@ -72,6 +73,8 @@ function cchax() {
                         this.html.value = this.html.value.replace(/[^.\d]/g, "");
                     });
             }
+            
+            if(this.oninput !== undefined) this.html.addEventListener("input", this.oninput);
         }
         getValue() {
             if(this.html === undefined) return "";
@@ -623,22 +626,28 @@ function cchax() {
         
         function partyHandler(init=false) {
             if(init) {
+                /*party mode override*/
                 Game.registerHook("draw", () => {
                     if(Game.PARTY) {
                         let pulse = Math.pow((Game.T % 10) / 10, 0.5);
                         let strength = Game.PARTYstrength ? Game.PARTYstrength : 1;
                         
-                        Game.l.style.filter = "hue-rotate(" + ((Game.T * 5) % 360) + "deg) brightness(" + (150 - 50 * pulse) + "%)";
-                        Game.l.style.webkitFilter = "hue-rotate(" + ((Game.T * 5) % 360) + "deg) brightness(" + (150 - 50 * pulse) + "%)";
-                        Game.l.style.transform = "scale(" + ((1 + 0.02 * strength) - 0.02 * strength * pulse) + "," + ((1 + 0.02 * strength) - 0.02 * strength * pulse) + ") rotate(" + (Math.sin(Game.T * 0.5) * 0.5 * strength) + "deg)";
-                        Game.wrapper.style.overflowX = "hidden";
-                        Game.wrapper.style.overflowY = "hidden";
+                        let hue = (Game.T * 5) % 360;
+                        let brightness = 200 - 100 * pulse;
+                        let grayscale = 100 * pulse;
+                        let scale = (1 + 0.02 * strength) - 0.02 * strength * pulse;
+                        let rotate = Math.sin(Game.T * 0.5) * 0.5 * strength;
+                        
+                        Game.l.style.filter = Game.l.style.webkitFilter = `hue-rotate(${hue}deg) brightness(${brightness}%) grayscale(${grayscale}%)`;
+                        Game.l.style.transform = `scale(${scale}) rotate(${rotate}deg)`;
                     }
                 });
+                
+                Game.wrapper.style.overflowX = "hidden";
+                Game.wrapper.style.overflowY = "hidden";
+                document.getElementById("topBar").style.zIndex = "1";
             }
             
-            Game.PARTYstrength = partyStrength.getFloat();
-            if(isNaN(Game.PARTYstrength)) Game.PARTYstrength = 1;
             Game.PARTY = partyEnabled;
             
             if(!partyEnabled && !init) {
@@ -656,7 +665,10 @@ function cchax() {
             partyHandler();
         });
         const partyDisp = new HaxBoolDisplay(partyEnabled);
-        const partyStrength = new HaxTextInput("float", "Strength");
+        const partyStrength = new HaxTextInput("float", "Strength", undefined, () => {
+            Game.PARTYstrength = partyStrength.getFloat();
+            if(isNaN(Game.PARTYstrength)) Game.PARTYstrength = 1;
+        });
         
         misc = new HaxBlock([partyBtn, partyDisp, partyStrength]);
         
